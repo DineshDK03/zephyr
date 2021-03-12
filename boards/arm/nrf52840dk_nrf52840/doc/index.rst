@@ -14,6 +14,7 @@ Nordic Semiconductor nRF52840 ARM Cortex-M4F CPU and the following devices:
 * FLASH
 * :abbr:`GPIO (General Purpose Input Output)`
 * :abbr:`I2C (Inter-Integrated Circuit)`
+* :abbr:`I2S ( Inter-IC sound interface)`
 * :abbr:`MPU (Memory Protection Unit)`
 * :abbr:`NVIC (Nested Vectored Interrupt Controller)`
 * :abbr:`PWM (Pulse Width Modulation)`
@@ -61,6 +62,8 @@ hardware features:
 | GPIO      | on-chip    | gpio                 |
 +-----------+------------+----------------------+
 | I2C(M)    | on-chip    | i2c                  |
++-----------+------------+----------------------+
+| I2S       | on-chip    | i2s                  |
 +-----------+------------+----------------------+
 | MPU       | on-chip    | arch/arm             |
 +-----------+------------+----------------------+

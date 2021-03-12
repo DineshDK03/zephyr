@@ -1,0 +1,30 @@
+# Copyright (c) 2019 Nordic Semiconductor ASA
+# Copyright (c) 2021 Linumiz
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig I2S_NRFX
+	bool "nRF I2S driver"
+	default y
+	depends on HAS_HW_NRF_I2S
+	help
+	  Enable I2S driver for nRF line of MCUs.
+
+if I2S_NRFX
+
+config NRFX_I2S_RX_BLOCK_COUNT
+	int "RX queue length"
+	default 4
+
+config NRFX_I2S_TX_BLOCK_COUNT
+	int "TX queue length"
+	default 4
+
+config NRFX_I2S_WORK_QUEUE_STACK_SIZE
+	int "I2S work queue stack size"
+	default 1024
+	depends on I2S_NRFX
+	help
+	  Size of the stack for the work queue thread that is used in the driver
+	  for handling the events from the I2S ISR.
+
+endif # I2S_NRFX
