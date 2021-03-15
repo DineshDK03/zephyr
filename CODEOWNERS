@@ -220,6 +220,8 @@
 /drivers/i2c/Kconfig.test                 @mbolivar-nordic
 /drivers/i2c/i2c_test.c                   @mbolivar-nordic
 /drivers/i2s/*litex*                      @mateusz-holenko @kgugala @pgielda
+/drivers/i2s/Kconfig.nrfx                 @DineshDK03
+/drivers/i2s/i2s_nrfx*                    @DineshDK03
 /drivers/ieee802154/                      @jukkar @tbursztyka
 /drivers/ieee802154/ieee802154_rf2xx*     @jukkar @tbursztyka @nandojve
 /drivers/ieee802154/ieee802154_cc13xx*    @bwitherspoon @cfriedt
