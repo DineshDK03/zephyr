@@ -52,6 +52,7 @@
 #include <net/net_ip.h>
 #include <sys/printk.h>
 #include <sys/util.h>
+#include <sys/types.h>
 
 #include <net/coap.h>
 #include <net/lwm2m.h>
@@ -140,6 +141,12 @@
 struct lwm2m_engine_obj;
 struct lwm2m_message;
 
+#define LWM2M_PATH_LEVEL_NONE 0
+#define LWM2M_PATH_LEVEL_OBJECT 1
+#define LWM2M_PATH_LEVEL_OBJECT_INST 2
+#define LWM2M_PATH_LEVEL_RESOURCE 3
+#define LWM2M_PATH_LEVEL_RESOURCE_INST 4
+
 /* path representing object instances */
 struct lwm2m_obj_path {
 	uint16_t obj_id;
@@ -191,6 +198,13 @@ struct lwm2m_engine_obj {
 	uint16_t field_count;
 	uint16_t instance_count;
 	uint16_t max_instance_count;
+
+	/* Object version information. */
+	uint8_t version_major;
+	uint8_t version_minor;
+
+	/* Object is a core object (defined in the official LwM2M spec.) */
+	bool is_core : 1;
 };
 
 /* Resource instances with this value are considered "not created" yet */
@@ -516,6 +530,8 @@ struct lwm2m_writer {
 	size_t (*put_objlnk)(struct lwm2m_output_context *out,
 			     struct lwm2m_obj_path *path,
 			     struct lwm2m_objlnk *value);
+	ssize_t (*put_corelink)(struct lwm2m_output_context *out,
+				const struct lwm2m_obj_path *path);
 };
 
 struct lwm2m_reader {
@@ -729,6 +745,16 @@ static inline size_t engine_put_objlnk(struct lwm2m_output_context *out,
 				       struct lwm2m_objlnk *value)
 {
 	return out->writer->put_objlnk(out, path, value);
+}
+
+static inline ssize_t engine_put_corelink(struct lwm2m_output_context *out,
+					  const struct lwm2m_obj_path *path)
+{
+	if (out->writer->put_corelink) {
+		return out->writer->put_corelink(out, path);
+	}
+
+	return -ENOTSUP;
 }
 
 static inline size_t engine_get_s32(struct lwm2m_input_context *in,

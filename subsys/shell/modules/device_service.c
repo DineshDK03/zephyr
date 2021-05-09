@@ -146,17 +146,17 @@ static int cmd_device_list(const struct shell *shell,
 			state = "DISABLED";
 		} else {
 #ifdef CONFIG_PM_DEVICE
-			uint32_t st = DEVICE_PM_ACTIVE_STATE;
-			int err = device_get_power_state(dev, &st);
+			uint32_t st = PM_DEVICE_STATE_ACTIVE;
+			int err = pm_device_state_get(dev, &st);
 
 			if (!err) {
-				state = device_pm_state_str(st);
+				state = pm_device_state_str(st);
 			}
 #endif /* CONFIG_PM_DEVICE */
 		}
 
 		shell_fprintf(shell, SHELL_NORMAL, " (%s)\n", state);
-		if (!_is_user_context()) {
+		if (!k_is_user_context()) {
 			struct cmd_device_list_visitor_context ctx = {
 				.shell = shell,
 				.buf = buf,

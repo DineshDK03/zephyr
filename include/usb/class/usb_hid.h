@@ -44,11 +44,7 @@ typedef void (*hid_idle_cb_t)(const struct device *dev, uint16_t report_id);
  */
 struct hid_ops {
 	hid_cb_t get_report;
-	hid_cb_t get_idle;
-	hid_cb_t get_protocol;
 	hid_cb_t set_report;
-	hid_cb_t set_idle;
-	hid_cb_t set_protocol;
 	hid_protocol_cb_t protocol_change;
 	hid_idle_cb_t on_idle;
 	/*
@@ -107,6 +103,18 @@ int hid_int_ep_read(const struct device *dev,
 		    uint8_t *data,
 		    uint32_t max_data_len,
 		    uint32_t *ret_bytes);
+
+/**
+ * @brief Set USB HID class Protocol Code
+ *
+ * @details Should be called before usb_hid_init().
+ *
+ * @param[in]  dev          Pointer to USB HID device
+ * @param[in]  proto_code   Protocol Code to be used for bInterfaceProtocol
+ *
+ * @return 0 on success, negative errno code on fail.
+ */
+int usb_hid_set_proto_code(const struct device *dev, uint8_t proto_code);
 
 /**
  * @brief Initialize USB HID class support

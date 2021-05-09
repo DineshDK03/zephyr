@@ -15,6 +15,7 @@
 #include <zephyr/types.h>
 #include <drivers/gpio.h>
 #include <sys/util.h>
+#include <stmemsc.h>
 #include "iis2iclx_reg.h"
 
 #if DT_ANY_INST_ON_BUS_STATUS_OKAY(spi)
@@ -35,38 +36,28 @@
 #define SENSOR_DEG2RAD_DOUBLE			(SENSOR_PI_DOUBLE / 180)
 #define SENSOR_G_DOUBLE				(SENSOR_G / 1000000.0)
 
-union iis2iclx_bus_cfg {
-#if DT_ANY_INST_ON_BUS_STATUS_OKAY(i2c)
-	uint16_t i2c_slv_addr;
-#endif
-
-#if DT_ANY_INST_ON_BUS_STATUS_OKAY(spi)
-	struct spi_config spi_cfg;
-#endif /* DT_ANY_INST_ON_BUS_STATUS_OKAY(spi) */
-};
-
 struct iis2iclx_config {
-	const struct device *bus;
-	int (*bus_init)(const struct device *dev);
-	const union iis2iclx_bus_cfg bus_cfg;
+	stmdev_ctx_t ctx;
+	union {
+#if DT_ANY_INST_ON_BUS_STATUS_OKAY(i2c)
+		const struct stmemsc_cfg_i2c i2c;
+#endif
+#if DT_ANY_INST_ON_BUS_STATUS_OKAY(spi)
+		const struct stmemsc_cfg_spi spi;
+#endif
+	} stmemsc_cfg;
 	uint8_t odr;
 	uint8_t range;
 #ifdef CONFIG_IIS2ICLX_TRIGGER
-	const char *irq_dev_name;
-	uint8_t irq_pin;
-	uint8_t irq_flags;
 	uint8_t int_pin;
+	const struct gpio_dt_spec gpio_drdy;
 #endif /* CONFIG_IIS2ICLX_TRIGGER */
 };
-
-/* sensor data forward declaration (member definition is below) */
-struct iis2iclx_data;
 
 #define IIS2ICLX_SHUB_MAX_NUM_SLVS			2
 
 struct iis2iclx_data {
 	const struct device *dev;
-	const struct device *bus;
 	int16_t acc[2];
 	uint32_t acc_gain;
 #if defined(CONFIG_IIS2ICLX_ENABLE_TEMP)
@@ -86,20 +77,10 @@ struct iis2iclx_data {
 	bool shub_inited;
 #endif /* CONFIG_IIS2ICLX_SENSORHUB */
 
-	stmdev_ctx_t *ctx;
-
-#if DT_ANY_INST_ON_BUS_STATUS_OKAY(i2c)
-	stmdev_ctx_t ctx_i2c;
-#endif
-#if DT_ANY_INST_ON_BUS_STATUS_OKAY(spi)
-	stmdev_ctx_t ctx_spi;
-#endif
-
 	uint16_t accel_freq;
 	uint8_t accel_fs;
 
 #ifdef CONFIG_IIS2ICLX_TRIGGER
-	const struct device *gpio;
 	struct gpio_callback gpio_cb;
 	sensor_trigger_handler_t handler_drdy_acc;
 	sensor_trigger_handler_t handler_drdy_temp;
@@ -114,8 +95,6 @@ struct iis2iclx_data {
 #endif /* CONFIG_IIS2ICLX_TRIGGER */
 };
 
-int iis2iclx_spi_init(const struct device *dev);
-int iis2iclx_i2c_init(const struct device *dev);
 #if defined(CONFIG_IIS2ICLX_SENSORHUB)
 int iis2iclx_shub_init(const struct device *dev);
 int iis2iclx_shub_fetch_external_devs(const struct device *dev);

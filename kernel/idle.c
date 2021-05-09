@@ -9,12 +9,10 @@
 #include <linker/sections.h>
 #include <drivers/timer/system_timer.h>
 #include <wait_q.h>
-#include <power/power.h>
+#include <pm/pm.h>
 #include <stdbool.h>
 #include <logging/log.h>
 #include <ksched.h>
-
-extern uint32_t z_timestamp_idle;
 
 LOG_MODULE_DECLARE(os, CONFIG_KERNEL_LOG_LEVEL);
 
@@ -59,7 +57,7 @@ void z_pm_save_idle_exit(int32_t ticks)
 	 */
 	pm_system_resume();
 #endif	/* CONFIG_PM */
-	z_clock_idle_exit();
+	sys_clock_idle_exit();
 }
 
 void idle(void *unused1, void *unused2, void *unused3)
@@ -67,10 +65,6 @@ void idle(void *unused1, void *unused2, void *unused3)
 	ARG_UNUSED(unused1);
 	ARG_UNUSED(unused2);
 	ARG_UNUSED(unused3);
-
-#ifdef CONFIG_BOOT_TIME_MEASUREMENT
-	z_timestamp_idle = k_cycle_get_32();
-#endif
 
 	while (true) {
 		/* SMP systems without a working IPI can't

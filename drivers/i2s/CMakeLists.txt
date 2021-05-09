@@ -8,4 +8,8 @@ zephyr_library_sources_ifdef(CONFIG_I2S_CAVS		i2s_cavs.c)
 zephyr_library_sources_ifdef(CONFIG_USERSPACE		i2s_handlers.c)
 zephyr_library_sources_ifdef(CONFIG_I2S_STM32		i2s_ll_stm32.c)
 zephyr_library_sources_ifdef(CONFIG_I2S_LITEX		i2s_litex.c)
+<<<<<<< HEAD
 zephyr_library_sources_ifdef(CONFIG_I2S_NRFX		i2s_nrfx.c)
+=======
+zephyr_library_sources_ifdef(CONFIG_I2S_MCUX_FLEXCOMM		i2s_mcux_flexcomm.c)
+>>>>>>> 4164b170342014f913d41aa3a4c5fb9ca2ec7f7e

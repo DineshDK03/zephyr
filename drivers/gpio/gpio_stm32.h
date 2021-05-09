@@ -102,6 +102,7 @@
 #define STM32_PERIPH_GPIOB LL_IOP_GRP1_PERIPH_GPIOB
 #define STM32_PERIPH_GPIOC LL_IOP_GRP1_PERIPH_GPIOC
 #define STM32_PERIPH_GPIOD LL_IOP_GRP1_PERIPH_GPIOD
+#define STM32_PERIPH_GPIOE LL_IOP_GRP1_PERIPH_GPIOE
 #define STM32_PERIPH_GPIOF LL_IOP_GRP1_PERIPH_GPIOF
 #elif CONFIG_SOC_SERIES_STM32L0X
 #define STM32_CLOCK_BUS_GPIO STM32_CLOCK_BUS_IOP
@@ -228,6 +229,10 @@ struct gpio_stm32_data {
 	const struct device *dev;
 	/* user ISR cb */
 	sys_slist_t cb;
+#ifdef CONFIG_PM_DEVICE
+	/* device power state */
+	uint32_t power_state;
+#endif
 };
 
 /**

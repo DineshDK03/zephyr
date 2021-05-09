@@ -26,6 +26,17 @@ struct iso_data {
 	uint32_t ts;
 };
 
+enum {
+	BT_BIG_INITIALIZED,
+
+	/* Creating a BIG as a broadcaster */
+	BT_BIG_PENDING,
+	/* Creating a BIG as a receiver */
+	BT_BIG_SYNCING,
+
+	BT_BIG_NUM_FLAGS,
+};
+
 struct bt_iso_big {
 	/** Array of ISO channels to setup as BIS (the BIG). */
 	struct bt_iso_chan **bis;
@@ -36,7 +47,7 @@ struct bt_iso_big {
 	/** The BIG handle */
 	uint8_t handle;
 
-	atomic_t initialized;
+	ATOMIC_DEFINE(flags, BT_BIG_NUM_FLAGS);
 };
 
 #define iso(buf) ((struct iso_data *)net_buf_user_data(buf))
@@ -64,7 +75,7 @@ void hci_le_cis_req(struct net_buf *buf);
 void hci_le_big_complete(struct net_buf *buf);
 
 /** Process BIG terminate event */
-void hci_le_big_termimate(struct net_buf *buf);
+void hci_le_big_terminate(struct net_buf *buf);
 
 /** Process BIG sync established event */
 void hci_le_big_sync_established(struct net_buf *buf);
@@ -133,3 +144,5 @@ void bt_iso_chan_set_state(struct bt_iso_chan *chan, uint8_t state);
 
 /* Process incoming data for a connection */
 void bt_iso_recv(struct bt_conn *conn, struct net_buf *buf, uint8_t flags);
+
+struct bt_conn_iso *bt_conn_iso(struct bt_conn *conn);
