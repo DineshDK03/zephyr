@@ -174,6 +174,9 @@ enum sensor_channel {
 	/** Desired charging current in mA */
 	SENSOR_CHAN_GAUGE_DESIRED_CHARGING_CURRENT,
 
+	/** Fingerprint Enrolling and searching channel */
+	SENSOR_CHAN_FINGERPRINT,
+
 	/** All channels. */
 	SENSOR_CHAN_ALL,
 
@@ -294,6 +297,19 @@ enum sensor_attribute {
 	 * algorithms to calibrate itself on a certain axis, or all of them.
 	 */
 	SENSOR_ATTR_CALIB_TARGET,
+
+	/**
+	 * To enroll fingerprint image as template
+	 */
+	SENSOR_ATTR_ADD,
+	/**
+	 * To Search fingerprint template
+	 */
+	SENSOR_ATTR_FIND,
+	/**
+	 * To delete Fingerprint template or to emptyDatabase
+	 */
+	SENSOR_ATTR_DEL,
 
 	/**
 	 * Number of all common sensor attributes.
@@ -599,7 +615,8 @@ static inline int32_t sensor_ms2_to_g(const struct sensor_value *ms2)
  * @brief Helper function to convert acceleration from Gs to m/s^2
  *
  * @param g The G value to be converted.
- * @param ms2 A pointer to a sensor_value struct, where the result is stored.
+ * @param ms2 A pointer to a sensor_value struct, where the result is
+ * stored.
  */
 static inline void sensor_g_to_ms2(int32_t g, struct sensor_value *ms2)
 {

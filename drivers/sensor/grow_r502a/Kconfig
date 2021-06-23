@@ -1,0 +1,10 @@
+# GROW_R502A hzgrow Fingerprint sensor Configuration options
+
+# Copyright (c) 2021 Linumiz
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig GROW_R502A
+	bool "GROW_R502A Fingerprint Sensor"
+	depends on SERIAL
+	help
+	  Enable driver for GROW_R502A Fingerprint Sensor.
