@@ -35,15 +35,15 @@
 #define FPS_INVALIDREG              0x1A /*invalid register number*/
 #define FPS_ADDRCODE                0x20
 #define FPS_PASSVERIFY              0x21
-#define FINGERPRINT_STARTCODE       \
+#define FPS_STARTCODE               \
 	0xEF01 /*Fixed value of 0xEF01; High byte transferred first*/
 
 /*Package Identifier's definition*/
-#define FINGERPRINT_COMMANDPACKET   0x1 /*Command packet*/
-#define FINGERPRINT_DATAPACKET      \
+#define FPS_COMMANDPACKET           0x1 /*Command packet*/
+#define FPS_DATAPACKET              \
 	0x2 /*Data packet, must follow command packet or acknowledge packet*/
-#define FINGERPRINT_ACKPACKET       0x7 /*Acknowledge packet*/
-#define FINGERPRINT_ENDDATAPACKET   0x8 /*End of data packet*/
+#define FPS_ACKPACKET               0x7 /*Acknowledge packet*/
+#define FPS_ENDDATAPACKET           0x8 /*End of data packet*/
 
 /*Instruction code's definition*/
 #define FPS_GENIMAGE                0x01 /*Collect finger image*/
@@ -70,13 +70,34 @@
 #define FPS_SOFTRESET               0x3D /*Soft reset*/
 #define FPS_HANDSHAKE               0x40 /*Handshake*/
 
-#define FPM_DEFAULT_PASSWORD        0x00000000
-#define FPM_DEFAULT_ADDRESS         0xFFFFFFFF
+#define FPS_DEFAULT_PASSWORD        0x00000000
+#define FPS_DEFAULT_ADDRESS         0xFFFFFFFF
+
+#define FPS_MAX_PACKET_LEN          256
+/* returned whenever we time out while reading */
+#define FPS_TIMEOUT                 -1
+/* returned whenever we get an unexpected PID or length */
+#define FPS_READ_ERROR              -2
+/* returned whenever there's no free ID */
+#define FPS_NOFREEINDEX             -1
+
+#define DEFAULT_TIMEOUT 2000 /*UART reading timeout in ms*/
+
+/* 32 is max packet length for ACKed commands, +1 for confirmation code */
+#define FPS_BUFFER_SZ               (32 + 1)
 
 struct grow_r502a_data {
 	const struct device *uart_dev;
+
+	const struct device *gpio_int;
 	struct sensor_trigger tap_trigger;
 	sensor_trigger_handler_t tap_handler;
+
+	uint8_t buffer[FPS_BUFFER_SZ];
+	uint32_t password;
+	uint32_t address;
+
+	uint16_t fingerID;
 };
 
 #endif /*GROW_R502A_H_*/
