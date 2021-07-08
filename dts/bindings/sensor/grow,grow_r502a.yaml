@@ -1,0 +1,8 @@
+# Copyright (c) 2021, Linumiz
+# SPDX-License-Identifier: Apache-2.0
+
+description: HZ-Grow GROW_R502A Fingerprint sensor.
+
+compatible: "grow,grow_r502a"
+
+include: uart-device.yaml

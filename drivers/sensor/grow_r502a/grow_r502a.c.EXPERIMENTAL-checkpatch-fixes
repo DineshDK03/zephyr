@@ -21,8 +21,7 @@ LOG_MODULE_REGISTER(GROW_R502A, CONFIG_SENSOR_LOG_LEVEL);
 
 static const struct device *dev;
 
-static inline void create_packet(struct packet *packet, uint8_t pkg_type,
-		uint8_t *pkg_data, uint16_t len)
+static inline void create_packet(struct packet *packet, uint8_t pkg_type, uint8_t *pkg_data, uint16_t len)
 {
 	packet->start_code = FPS_STARTCODE;
 	packet->type = pkg_type;
@@ -64,8 +63,7 @@ static void write_packet(const struct device *uart_dev, struct packet gen_packet
 	uart_fifo_fill(uart_dev, &sum_pkt[1], 1);
 }
 
-static uint8_t getStructuredPacket(const struct device *uart_dev, struct packet *packet,
-		uint16_t timeout)
+static uint8_t getStructuredPacket(const struct device *uart_dev, struct packet *packet, uint16_t timeout)
 {
 	uint8_t byte;
 	uint16_t idx = 0;
@@ -156,15 +154,15 @@ static int16_t fps_store_model(uint16_t id, uint8_t slot)
 
 static int16_t fps_get_template_count(uint16_t *template_cnt)
 {
-	uint8_t data[0] = {FPS_TEMPLATECOUNT};
+    uint8_t data[0] = {FPS_TEMPLATECOUNT};
 
-	create_packet(&gen_packet, FPS_COMMANDPACKET, data, sizeof(data));
+    create_packet(&gen_packet, FPS_COMMANDPACKET, data, sizeof(data));
 
-	*template_cnt = recv_packet.data[1];
-	*template_cnt <<= 8;
-	*template_cnt |= recv_packet.data[2];
+    *template_cnt = recv_packet.data[1];
+    *template_cnt <<= 8;
+    *template_cnt |= recv_packet.data[2];
 
-	return recv_packet.data[0];
+    return recv_packet.data[0];
 }
 
 static int grow_r502a_sample_fetch(const struct device *dev,

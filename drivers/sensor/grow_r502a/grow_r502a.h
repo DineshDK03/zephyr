@@ -69,35 +69,34 @@
 #define FPS_CHECKSENSOR             0x36 /*Check sensor*/
 #define FPS_SOFTRESET               0x3D /*Soft reset*/
 #define FPS_HANDSHAKE               0x40 /*Handshake*/
+#define FPS_BADPACKET               0xFE /* Bad packet was sent*/
 
 #define FPS_DEFAULT_PASSWORD        0x00000000
 #define FPS_DEFAULT_ADDRESS         0xFFFFFFFF
 
-#define FPS_MAX_PACKET_LEN          256
-/* returned whenever we time out while reading */
-#define FPS_TIMEOUT                 -1
-/* returned whenever we get an unexpected PID or length */
-#define FPS_READ_ERROR              -2
-/* returned whenever there's no free ID */
-#define FPS_NOFREEINDEX             -1
+#define DEFAULT_TIMEOUT 1000 /*UART reading timeout in ms*/
 
-#define DEFAULT_TIMEOUT 2000 /*UART reading timeout in ms*/
 
-/* 32 is max packet length for ACKed commands, +1 for confirmation code */
-#define FPS_BUFFER_SZ               (32 + 1)
+struct packet {
+	uint16_t start_code;
+	uint8_t address[4];
+	uint8_t type;
+	uint16_t length;
+	uint8_t data[64];
+};
+static struct packet gen_packet, recv_packet;
 
 struct grow_r502a_data {
 	const struct device *uart_dev;
 
-	const struct device *gpio_int;
-	struct sensor_trigger tap_trigger;
-	sensor_trigger_handler_t tap_handler;
+	struct sensor_trigger touch_trigger;
+	sensor_trigger_handler_t touch_handler;
 
-	uint8_t buffer[FPS_BUFFER_SZ];
 	uint32_t password;
 	uint32_t address;
 
 	uint16_t fingerID;
+	uint16_t count;
 };
 
 #endif /*GROW_R502A_H_*/

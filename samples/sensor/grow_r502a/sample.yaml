@@ -1,0 +1,7 @@
+sample:
+  name: grow_r502a Sensor Sample
+tests:
+  sample.sensor.grow_r502a:
+    harness: sensor
+    tags: sensors
+    depends_on: serial

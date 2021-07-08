@@ -1,0 +1,9 @@
+&uart3 {
+    current-speed = <57600>;
+    status = "okay";
+    grow_r502a{
+        compatible = "grow_r502a";
+        status = "okay";
+        label = "GROW_R502A";
+    };
+};

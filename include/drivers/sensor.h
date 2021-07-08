@@ -236,6 +236,9 @@ enum sensor_trigger_type {
 	/** Trigger fires when a free fall is detected. */
 	SENSOR_TRIG_FREEFALL,
 
+	/** Trigger fires when a touch is detected. */
+	SENSOR_TRIG_TOUCH,
+
 	/**
 	 * Number of all common sensor triggers.
 	 */
