@@ -156,6 +156,10 @@ The Zephyr nucleo_l552ze_q board configuration supports the following hardware f
 +-----------+------------+-------------------------------------+
 | RNG       | on-chip    | True Random Number Generator        |
 +-----------+------------+-------------------------------------+
+| DAC       | on-chip    | DAC Controller                      |
++-----------+------------+-------------------------------------+
+| ADC       | on-chip    | ADC Controller                      |
++-----------+------------+-------------------------------------+
 
 Other hardware features are not yet supported on this Zephyr port.
 
@@ -210,6 +214,8 @@ Default Zephyr Peripheral Mapping:
 - PWM_2_CH1 : PA0
 - USER_PB : PC13
 - LD2 : PA5
+- DAC1 : PA4
+- ADC1 : PC0
 
 System Clock
 ------------

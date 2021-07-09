@@ -76,7 +76,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "zephyr.application",
     "zephyr.html_redirects",
-    "only.eager_only",
+    "zephyr.kconfig-role",
     "zephyr.dtcompatible-role",
     "zephyr.link-roles",
     "sphinx_tabs.tabs",

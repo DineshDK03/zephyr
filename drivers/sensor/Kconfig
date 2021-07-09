@@ -94,6 +94,8 @@ source "drivers/sensor/grow_r502a/Kconfig"
 
 source "drivers/sensor/ti_hdc/Kconfig"
 
+source "drivers/sensor/ti_hdc20xx/Kconfig"
+
 source "drivers/sensor/hmc5883l/Kconfig"
 
 source "drivers/sensor/hp206c/Kconfig"

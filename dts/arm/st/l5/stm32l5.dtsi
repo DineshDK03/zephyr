@@ -297,6 +297,36 @@
 			label = "SPI_1";
 		};
 
+		dac1: dac@40007400 {
+			compatible = "st,stm32-dac";
+			reg = <0x40007400 0x400>;
+			clocks = <&rcc STM32_CLOCK_BUS_APB1 0x20000000>;
+			status = "disabled";
+			label = "DAC_1";
+			#io-channel-cells = <1>;
+		};
+		spi2: spi@40003800 {
+			compatible = "st,stm32-spi-fifo", "st,stm32-spi";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x40003800 0x400>;
+			interrupts = <60 5>;
+			clocks = <&rcc STM32_CLOCK_BUS_APB1 0x00004000>;
+			status = "disabled";
+			label = "SPI_2";
+		};
+
+		spi3: spi@40003c00 {
+			compatible = "st,stm32-spi-fifo", "st,stm32-spi";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x40003c00 0x400>;
+			interrupts = <99 5>;
+			clocks = <&rcc STM32_CLOCK_BUS_APB1 0x00008000>;
+			status = "disabled";
+			label = "SPI_3";
+		};
+
 		rng: rng@420c0800 {
 			compatible = "st,stm32-rng";
 			reg = <0x420c0800 0x400>;
@@ -466,6 +496,26 @@
 				label = "PWM_17";
 				#pwm-cells = <3>;
 			};
+		};
+
+		adc1: adc@42028000 {
+			compatible = "st,stm32-adc";
+			reg = <0x42028000 0x100>;
+			clocks = <&rcc STM32_CLOCK_BUS_AHB2 0x00002000>;
+			interrupts = <37 0>;
+			status = "disabled";
+			label = "ADC_1";
+			#io-channel-cells = <1>;
+		};
+
+		adc2: adc@42028100 {
+			compatible = "st,stm32-adc";
+			reg = <0x42028100 0x100>;
+			clocks = <&rcc STM32_CLOCK_BUS_AHB2 0x00002000>;
+			interrupts = <37 0>;
+			status = "disabled";
+			label = "ADC_2";
+			#io-channel-cells = <1>;
 		};
 	};
 };
