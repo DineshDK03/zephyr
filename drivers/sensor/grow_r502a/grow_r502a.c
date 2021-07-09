@@ -167,6 +167,36 @@ static int16_t fps_get_template_count(uint16_t *template_cnt)
 	return recv_packet.data[0];
 }
 
+static struct sys_params getParameters(void)
+{
+	struct sys_params get_param;
+	uint8_t data[] = {FPS_READSYSPARAM};
+
+	create_packet(&gen_packet, FPS_COMMANDPACKET, data, sizeof(data));
+
+	get_param.return_data = recv_packet.data[0];
+	get_param.status_reg = ((uint16_t)recv_packet.data[1] << 8) | recv_packet.data[2];
+	get_param.system_id = ((uint16_t)recv_packet.data[3] << 8) | recv_packet.data[4];
+	get_param.capacity = ((uint16_t)recv_packet.data[5] << 8) | recv_packet.data[6];
+	get_param.security_level = ((uint16_t)recv_packet.data[7] << 8) | recv_packet.data[8];
+	get_param.device_addr = ((uint32_t)recv_packet.data[9] << 24) |
+		((uint32_t)recv_packet.data[10] << 16) |
+		((uint32_t)recv_packet.data[11] << 8) | (uint32_t)recv_packet.data[12];
+	get_param.packet_len = ((uint16_t)recv_packet.data[13] << 8) | recv_packet.data[14];
+	if (get_param.packet_len == 0) {
+		get_param.packet_len = 32;
+	} else if (get_param.packet_len == 1) {
+		get_param.packet_len = 64;
+	} else if (get_param.packet_len == 2) {
+		get_param.packet_len = 128;
+	} else if (get_param.packet_len == 3) {
+		get_param.packet_len = 256;
+	}
+	get_param.baud_rate = (((uint16_t)recv_packet.data[15] << 8) | recv_packet.data[16]) * 9600;
+
+	return get_param;
+}
+
 static int grow_r502a_sample_fetch(const struct device *dev,
 		enum sensor_channel chan)
 {
@@ -187,12 +217,19 @@ static int grow_r502a_channel_get(const struct device *dev,
 
 	if (chan == SENSOR_CHAN_FINGERPRINT) {
 		uint8_t rc = fps_get_template_count(&drv_data->count);
-
 		if (rc == FPS_OK) {
 			LOG_INF("Get template count OK\n");
 			val->val1 = drv_data->count;
 		} else {
 			LOG_ERR("template count Get Error : 0x%X\n", rc);
+		}
+		struct sys_params get_param = getParameters();
+
+		if (get_param.return_data == FPS_OK) {
+			LOG_INF("Get capacity of FPS OK\n");
+			val->val2 = get_param.capacity;
+		} else {
+			LOG_ERR("Capacity Get Error : 0x%X\n", get_param.return_data);
 		}
 	} else {
 		return -EINVAL;

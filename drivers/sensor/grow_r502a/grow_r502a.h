@@ -76,6 +76,25 @@
 
 #define DEFAULT_TIMEOUT 1000 /*UART reading timeout in ms*/
 
+struct sys_params {
+	uint8_t return_data;
+	uint16_t status_reg;
+	uint16_t system_id;
+	uint16_t capacity;
+	uint16_t security_level;
+	uint32_t device_addr;
+	uint16_t packet_len;
+	uint16_t baud_rate;
+};
+const struct sys_params defaults = {
+	.status_reg = 0x0,
+	.system_id = 0x0,
+	.capacity = 200,
+	.security_level = 5,
+	.device_addr = 0xFFFFFFFF,
+	.packet_len = 64,
+	.baud_rate = 57600,
+}
 
 struct packet {
 	uint16_t start_code;
