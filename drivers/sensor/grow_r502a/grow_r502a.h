@@ -75,9 +75,10 @@
 #define FPS_DEFAULT_ADDRESS         0xFFFFFFFF
 
 #define DEFAULT_TIMEOUT 1000 /*UART reading timeout in ms*/
+#define RING_BUF_SIZE		1024
 
 struct sys_params {
-	uint8_t return_data;
+	uint8_t ack_byte;
 	uint16_t status_reg;
 	uint16_t system_id;
 	uint16_t capacity;
@@ -86,15 +87,6 @@ struct sys_params {
 	uint16_t packet_len;
 	uint16_t baud_rate;
 };
-const struct sys_params defaults = {
-	.status_reg = 0x0,
-	.system_id = 0x0,
-	.capacity = 200,
-	.security_level = 5,
-	.device_addr = 0xFFFFFFFF,
-	.packet_len = 64,
-	.baud_rate = 57600,
-}
 
 struct packet {
 	uint16_t start_code;
@@ -102,17 +94,17 @@ struct packet {
 	uint8_t type;
 	uint16_t length;
 	uint8_t data[64];
-};
-static struct packet gen_packet, recv_packet;
+} __attribute__((__packed__));
 
 struct grow_r502a_data {
-	const struct device *uart_dev;
-	struct k_work work;
-	struct sensor_trigger touch_trigger;
-	sensor_trigger_handler_t touch_handler;
+	const struct device *dev;
 
-	uint32_t password;
-	uint32_t address;
+	uint8_t rx_buf[RING_BUF_SIZE];
+	struct ring_buf ringbuf;
+	struct k_work work;
+
+	struct packet recv_packet;
+	struct sys_params params;
 
 	uint16_t fingerID;
 	uint16_t count;

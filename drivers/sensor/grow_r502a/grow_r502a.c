@@ -13,13 +13,21 @@
 #include <string.h>
 #include <drivers/uart.h>
 #include <logging/log.h>
-#include <sys/byteorder.h>
+#include <sys/ring_buffer.h>
 
 #include "grow_r502a.h"
 
 LOG_MODULE_REGISTER(GROW_R502A, CONFIG_SENSOR_LOG_LEVEL);
 
-static const struct device *dev;
+const struct sys_params defaults = {
+	.status_reg = 0x0,
+	.system_id = 0x0,
+	.capacity = 200,
+	.security_level = 5,
+	.device_addr = 0xFFFFFFFF,
+	.packet_len = 64,
+	.baud_rate = 57600,
+};
 
 static inline void create_packet(struct packet *packet, uint8_t pkg_type,
 		uint8_t *pkg_data, uint16_t len)
@@ -38,7 +46,7 @@ static inline void create_packet(struct packet *packet, uint8_t pkg_type,
 	}
 }
 
-static void write_packet(struct packet gen_packet)
+static void write_packet(const struct device *dev, struct packet gen_packet)
 {
 	uint16_t length = gen_packet.length + 2;
 
@@ -64,151 +72,116 @@ static void write_packet(struct packet gen_packet)
 	uart_poll_out(dev, sum_pkt[1]);
 }
 
-static uint8_t getStructuredPacket(const struct device *uart_dev, struct packet *packet,
-		uint16_t timeout)
+static uint8_t fps_get_image(const struct device *dev)
 {
-	uint8_t byte;
-	uint16_t idx = 0;
-
-	while (true) {
-		if (sys_clock_tick_get() - sys_clock_timeout_end_calc(K_MSEC(timeout)) <= 0) {
-			printk("Timeout happened\n");
-		}
-
-		uart_fifo_read(uart_dev, &byte, 1);
-
-		switch (idx) {
-		case 0:
-			if (byte != (FPS_STARTCODE >> 8)) {
-				continue;
-			}
-			packet->start_code = (uint16_t)byte << 8;
-			break;
-		case 1:
-			packet->start_code |= byte;
-			if (packet->start_code != FPS_STARTCODE) {
-				return FPS_BADPACKET;
-			}
-			break;
-		case 2:
-		case 3:
-		case 4:
-		case 5:
-			packet->address[idx - 2] = byte;
-			break;
-		case 6:
-			packet->type = byte;
-			break;
-		case 7:
-			packet->length = (uint16_t)byte << 8;
-			break;
-		case 8:
-			packet->length |= byte;
-			break;
-		default:
-			packet->data[idx - 9] = byte;
-			if ((idx - 8) == packet->length) {
-				return FPS_OK;
-			}
-			break;
-		}
-		idx++;
-	}
-	/* Shouldn't get here so... */
-	return FPS_BADPACKET;
-}
-
-static int16_t fps_get_image(void)
-{
+	struct grow_r502a_data *drv_data = dev->data;
+	struct packet gen_packet;
 	uint8_t data[] = {FPS_GENIMAGE};
 
 	create_packet(&gen_packet, FPS_COMMANDPACKET, data, sizeof(data));
-	write_packet(gen_packet);
+	write_packet(dev, gen_packet);
 
-	return recv_packet.data[0];
+	return drv_data->recv_packet.data[0];
 }
 
-static int16_t fps_image2Tz(uint8_t slot)
+static int16_t fps_image2Tz(const struct device *dev, uint8_t slot)
 {
+	struct grow_r502a_data *drv_data = dev->data;
+	struct packet gen_packet;
 	uint8_t data[] = {FPS_IMAGE2TZ, slot};
 
 	create_packet(&gen_packet, FPS_COMMANDPACKET, data, sizeof(data));
-	write_packet(gen_packet);
+	write_packet(dev, gen_packet);
 
-	return recv_packet.data[0];
+	return drv_data->recv_packet.data[0];
 }
 
-static int16_t fps_create_model(void)
+static int16_t fps_create_model(const struct device *dev)
 {
+	struct grow_r502a_data *drv_data = dev->data;
+	struct packet gen_packet;
 	uint8_t data[] = {FPS_REGMODEL};
 
 	create_packet(&gen_packet, FPS_COMMANDPACKET, data, sizeof(data));
-	write_packet(gen_packet);
+	write_packet(dev, gen_packet);
 
-	return recv_packet.data[0];
+	return drv_data->recv_packet.data[0];
 }
 
-static int16_t fps_store_model(uint16_t id, uint8_t slot)
+static int16_t fps_store_model(const struct device *dev, uint16_t id, uint8_t slot)
 {
+	struct grow_r502a_data *drv_data = dev->data;
+	struct packet gen_packet;
 	uint8_t data[] = {FPS_STORE, slot, id >> 8, id & 0xFF};
 
 	create_packet(&gen_packet, FPS_COMMANDPACKET, data, sizeof(data));
-	write_packet(gen_packet);
+	write_packet(dev, gen_packet);
 
-	return recv_packet.data[0];
+	return drv_data->recv_packet.data[0];
 }
 
-static int16_t fps_get_template_count(uint16_t *template_cnt)
+static int16_t fps_get_template_count(const struct device *dev, uint16_t *template_cnt)
 {
-	uint8_t data[0] = {FPS_TEMPLATECOUNT};
+	struct grow_r502a_data *drv_data = dev->data;
+	struct packet gen_packet;
+	uint8_t data[] = {FPS_TEMPLATECOUNT};
 
 	create_packet(&gen_packet, FPS_COMMANDPACKET, data, sizeof(data));
-	write_packet(gen_packet);
+	write_packet(dev, gen_packet);
 
-	*template_cnt = recv_packet.data[1];
+	*template_cnt = drv_data->recv_packet.data[1];
 	*template_cnt <<= 8;
-	*template_cnt |= recv_packet.data[2];
+	*template_cnt |= drv_data->recv_packet.data[2];
 
-	return recv_packet.data[0];
+	return drv_data->recv_packet.data[0];
 }
 
-static struct sys_params getParameters(void)
+static void get_sys_parameter(const struct device *dev)
 {
-	struct sys_params get_param;
+	struct grow_r502a_data *drv_data = dev->data;
+	struct packet gen_packet;
 	uint8_t data[] = {FPS_READSYSPARAM};
 
 	create_packet(&gen_packet, FPS_COMMANDPACKET, data, sizeof(data));
-	write_packet(gen_packet);
+	write_packet(dev, gen_packet);
 
-	get_param.return_data = recv_packet.data[0];
-	get_param.status_reg = ((uint16_t)recv_packet.data[1] << 8) | recv_packet.data[2];
-	get_param.system_id = ((uint16_t)recv_packet.data[3] << 8) | recv_packet.data[4];
-	get_param.capacity = ((uint16_t)recv_packet.data[5] << 8) | recv_packet.data[6];
-	get_param.security_level = ((uint16_t)recv_packet.data[7] << 8) | recv_packet.data[8];
-	get_param.device_addr = ((uint32_t)recv_packet.data[9] << 24) |
-		((uint32_t)recv_packet.data[10] << 16) |
-		((uint32_t)recv_packet.data[11] << 8) | (uint32_t)recv_packet.data[12];
-	get_param.packet_len = ((uint16_t)recv_packet.data[13] << 8) | recv_packet.data[14];
-	if (get_param.packet_len == 0) {
-		get_param.packet_len = 32;
-	} else if (get_param.packet_len == 1) {
-		get_param.packet_len = 64;
-	} else if (get_param.packet_len == 2) {
-		get_param.packet_len = 128;
-	} else if (get_param.packet_len == 3) {
-		get_param.packet_len = 256;
+	drv_data->params.ack_byte = drv_data->recv_packet.data[0];
+	drv_data->params.status_reg = ((uint16_t)drv_data->recv_packet.data[1] << 8) |
+		drv_data->recv_packet.data[2];
+	drv_data->params.system_id = ((uint16_t)drv_data->recv_packet.data[3] << 8) |
+		drv_data->recv_packet.data[4];
+	drv_data->params.capacity = ((uint16_t)drv_data->recv_packet.data[5] << 8) |
+		drv_data->recv_packet.data[6];
+	drv_data->params.security_level = ((uint16_t)drv_data->recv_packet.data[7] << 8) |
+		drv_data->recv_packet.data[8];
+	drv_data->params.device_addr = ((uint32_t)drv_data->recv_packet.data[9] << 24) |
+		((uint32_t)drv_data->recv_packet.data[10] << 16) |
+		((uint32_t)drv_data->recv_packet.data[11] << 8) |
+		(uint32_t)drv_data->recv_packet.data[12];
+	drv_data->params.packet_len = ((uint16_t)drv_data->recv_packet.data[13] << 8) |
+		drv_data->recv_packet.data[14];
+	if (drv_data->params.packet_len == 0) {
+		drv_data->params.packet_len = 32;
+	} else if (drv_data->params.packet_len == 1) {
+		drv_data->params.packet_len = 64;
+	} else if (drv_data->params.packet_len == 2) {
+		drv_data->params.packet_len = 128;
+	} else if (drv_data->params.packet_len == 3) {
+		drv_data->params.packet_len = 256;
 	}
-	get_param.baud_rate = (((uint16_t)recv_packet.data[15] << 8) | recv_packet.data[16]) * 9600;
+	drv_data->params.baud_rate = (((uint16_t)drv_data->recv_packet.data[15] << 8) |
+			drv_data->recv_packet.data[16]) * 9600;
 
-	return get_param;
 }
 
 static int grow_r502a_sample_fetch(const struct device *dev,
 		enum sensor_channel chan)
 {
+	struct grow_r502a_data *drv_data = dev->data;
 
 	if (chan == SENSOR_CHAN_FINGERPRINT) {
-		printk("Channel fetch success");
+		fps_get_template_count(dev, &drv_data->count);
+		get_sys_parameter(dev);
 	} else {
 		return -ENOTSUP;
 	}
@@ -222,25 +195,16 @@ static int grow_r502a_channel_get(const struct device *dev,
 	struct grow_r502a_data *drv_data = dev->data;
 
 	if (chan == SENSOR_CHAN_FINGERPRINT) {
-		uint8_t rc = fps_get_template_count(&drv_data->count);
-		if (rc == FPS_OK) {
-			LOG_INF("Get template count OK\n");
 			val->val1 = drv_data->count;
-		} else {
-			LOG_ERR("template count Get Error : 0x%X\n", rc);
-		}
-		struct sys_params get_param = getParameters();
-
-		if (get_param.return_data == FPS_OK) {
+			LOG_INF("Get template count OK\n");
+			val->val2 = drv_data->params.capacity;
 			LOG_INF("Get capacity of FPS OK\n");
-			val->val2 = get_param.capacity;
 		} else {
-			LOG_ERR("Capacity Get Error : 0x%X\n", get_param.return_data);
+			LOG_ERR("Sensor channel_get error\n");
+			return -EINVAL;
 		}
-	} else {
-		return -EINVAL;
-	}
-	return 0;
+
+		return 0;
 }
 
 static int grow_r502a_attr_set(const struct device *dev,
@@ -256,7 +220,7 @@ static int grow_r502a_attr_set(const struct device *dev,
 			LOG_INF("Waiting for valid finger to enroll as ID #%d", val->val1);
 
 			while (p != FPS_OK) {
-				p = fps_get_image();
+				p = fps_get_image(dev);
 				switch (p) {
 				case FPS_OK:
 				      LOG_INF("Image taken");
@@ -270,7 +234,7 @@ static int grow_r502a_attr_set(const struct device *dev,
 				}
 			}
 
-			p = fps_image2Tz(val->val2);
+			p = fps_image2Tz(dev, val->val2);
 			switch (p) {
 			case FPS_OK:
 			      LOG_INF("Image converted");
@@ -283,14 +247,14 @@ static int grow_r502a_attr_set(const struct device *dev,
 			k_msleep(2000);
 			p = 0;
 			while (p != FPS_NOFINGER) {
-				p = fps_get_image();
+				p = fps_get_image(dev);
 				k_msleep(10);
 			}
 			LOG_INF("ID %d", val->val1);
 			p = -1;
 			LOG_INF("Place same finger again");
 			while (p != FPS_OK) {
-				p = fps_get_image();
+				p = fps_get_image(dev);
 				switch (p) {
 				case FPS_OK:
 					LOG_INF("Image taken");
@@ -301,7 +265,7 @@ static int grow_r502a_attr_set(const struct device *dev,
 				}
 			}
 
-			p = fps_image2Tz(val->val2+1);
+			p = fps_image2Tz(dev, val->val2+1);
 			switch (p) {
 			case FPS_OK:
 				LOG_INF("Image converted");
@@ -313,7 +277,7 @@ static int grow_r502a_attr_set(const struct device *dev,
 
 			LOG_INF("Creating model for #%d", val->val1);
 
-			p = fps_create_model();
+			p = fps_create_model(dev);
 			if (p == FPS_OK) {
 				LOG_INF("Prints matched!");
 			} else {
@@ -321,7 +285,7 @@ static int grow_r502a_attr_set(const struct device *dev,
 			}
 
 			LOG_INF("ID %d", val->val1);
-			p = fps_store_model(val->val1, val->val2);
+			p = fps_store_model(dev, val->val1, val->val2);
 			if (p == FPS_OK) {
 				LOG_INF("Stored!");
 			} else {
@@ -355,85 +319,119 @@ static int grow_r502a_attr_get(const struct device *dev,
 	return 0;
 }
 
-static void grow_r502a_work_cb(struct k_work *work)
+static void work_handler(struct k_work *work)
 {
 	struct grow_r502a_data *drv_data =
 		CONTAINER_OF(work, struct grow_r502a_data, work);
+	uint8_t buffer[64];
+	uint16_t idx = 0;
 
-	if (drv_data->touch_handler != NULL) {
-		uart_irq_tx_disable(dev);
-		uart_irq_rx_disable(dev);
-		uart_irq_callback_set(dev, grow_r502a_uart_isr);
-		uart_irq_rx_enable(dev);
+	ring_buf_get(&drv_data->ringbuf, buffer, sizeof(buffer));
+
+	while (true) {
+		switch (idx) {
+		case 0:
+			if (buffer[idx] != (FPS_STARTCODE >> 8)) {
+				continue;
+			}
+			drv_data->recv_packet.start_code = (uint16_t)buffer[idx] << 8;
+			break;
+		case 1:
+			drv_data->recv_packet.start_code |= buffer[idx];
+			if (drv_data->recv_packet.start_code != FPS_STARTCODE) {
+				LOG_ERR("Received Bad Packet %X\n", FPS_BADPACKET);
+			}
+			break;
+		case 2:
+			drv_data->recv_packet.address[idx-2] = buffer[idx];
+			break;
+		case 3:
+			drv_data->recv_packet.address[idx-2] = buffer[idx];
+			break;
+		case 4:
+			drv_data->recv_packet.address[idx-2] = buffer[idx];
+			break;
+		case 5:
+			drv_data->recv_packet.address[idx-2] = buffer[idx];
+			break;
+		case 6:
+			drv_data->recv_packet.type = buffer[idx];
+			break;
+		case 7:
+			drv_data->recv_packet.length = (uint16_t)buffer[idx] << 8;
+			break;
+		case 8:
+			drv_data->recv_packet.length |= buffer[idx];
+			break;
+		default:
+		{
+			int buf_id = idx;
+
+			for (uint8_t i = 0; i < (sizeof(buffer) - idx); i++, buf_id++) {
+				drv_data->recv_packet.data[i] = buffer[buf_id];
+			}
+			if ((idx - 8) == drv_data->recv_packet.length) {
+				LOG_INF("Confirmation code %X\n", FPS_OK);
+			} else {
+				LOG_ERR("Confirmation code %X\n", FPS_BADPACKET);
+			}
+			break;
+		}
+		}
+		idx++;
 	}
 }
 
-static int grow_r502a_trigger_set(const struct device *dev,
-			 const struct sensor_trigger *trig,
-			 sensor_trigger_handler_t handler)
+static void grow_r502a_uart_isr(const struct device *dev, void *user_data)
 {
 	struct grow_r502a_data *drv_data = dev->data;
-
-	if (trig->type == SENSOR_TRIG_TOUCH) {
-		drv_data->touch_handler = handler;
-		drv_data->touch_trigger = *trig;
-	} else {
-		return -ENOTSUP;
-	}
-
-	return 0;
-
-}
-
-static int grow_r502a_uart_isr(const struct device *dev, void *user_data)
-{
 	ARG_UNUSED(user_data);
-	uint16_t timeout = 1000;
 
-	if (!uart_irq_update(dev)) {
-		LOG_ERR("retval should always be 1\n");
-		return -EIO;
+	while (uart_irq_update(dev) && uart_irq_is_pending(dev)) {
+		if (uart_irq_rx_ready(dev)) {
+			int recv_len, rb_len;
+			uint8_t buffer[64];
+			size_t len = MIN(ring_buf_space_get(&drv_data->ringbuf),
+					 sizeof(buffer));
+
+			recv_len = uart_fifo_read(dev, buffer, len);
+			if (recv_len < 0) {
+				LOG_ERR("No Data is Receiving\n");
+			}
+
+			rb_len = ring_buf_put(&drv_data->ringbuf, buffer, recv_len);
+			if (rb_len > 10) {
+				k_work_submit(&drv_data->work);
+			} else {
+				LOG_ERR("Data receive error\n");
+			}
+		}
 	}
-
-	if (uart_irq_rx_ready(dev)) {
-		uint8_t rc = getStructuredPacket(dev, &recv_packet, timeout);
-				if (rc != FPS_OK) {
-					return FPS_PACKETRECIEVEERROR;
-				}
-				if (recv_packet.type != FPS_ACKPACKET) {
-					return FPS_PACKETRECIEVEERROR;
-				}
-	}
-}
-
-static int grow_r502a_init_interrupt(const struct device *dev)
-{
-	drv_data->work.handler = grow_r502a_work_cb;
-	return 0;
 }
 
 static int grow_r502a_init(const struct device *dev)
 {
 	struct grow_r502a_data *drv_data = dev->data;
 
-	drv_data->uart_dev = device_get_binding(DT_INST_BUS_LABEL(0));
+	drv_data->dev = device_get_binding(DT_INST_BUS_LABEL(0));
 
-	if (!drv_data->uart_dev) {
+	if (!drv_data->dev) {
 		LOG_DBG("uart device is not found: %s",
 			    DT_INST_BUS_LABEL(0));
 		return -EINVAL;
 	}
 
-	if (grow_r502a_init_interrupt(dev) < 0) {
-		LOG_ERR("Failed to initialize interrupt!");
-		return -EIO;
-	}
+	ring_buf_init(&drv_data->ringbuf, sizeof(drv_data->rx_buf),
+		drv_data->rx_buf);
+	k_work_init(&drv_data->work, work_handler);
+
+	uart_irq_callback_set(dev, grow_r502a_uart_isr);
+	uart_irq_rx_enable(dev);
 
 	return 0;
 }
 
 static const struct sensor_driver_api grow_r502a_api = {
-	.trigger_set = grow_r502a_trigger_set,
 	.sample_fetch = grow_r502a_sample_fetch,
 	.channel_get = grow_r502a_channel_get,
 	.attr_set = grow_r502a_attr_set,
