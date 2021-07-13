@@ -38,7 +38,7 @@ static inline void create_packet(struct packet *packet, uint8_t pkg_type,
 	}
 }
 
-static void write_packet(const struct device *uart_dev, struct packet gen_packet)
+static void write_packet(struct packet gen_packet)
 {
 	uint16_t length = gen_packet.length + 2;
 
@@ -49,19 +49,19 @@ static void write_packet(const struct device *uart_dev, struct packet gen_packet
 						(length >> 8), (length & 0xFF) };
 
 	for (uint8_t i = 0; i < sizeof(packet); i++) {
-		uart_fifo_fill(uart_dev, &packet[i], 1);
+		uart_poll_out(dev, packet[i]);
 	}
 	uint16_t sum = (length >> 8) + (length & 0xFF) + gen_packet.type;
 
 	for (uint8_t i = 0; i < gen_packet.length; i++) {
-		uart_fifo_fill(uart_dev, &gen_packet.data[i], 1);
+		uart_poll_out(dev, gen_packet.data[i]);
 		sum += gen_packet.data[i];
 	}
 
 	uint8_t sum_pkt[] = { (sum >> 8), (sum & 0xFF)};
 
-	uart_fifo_fill(uart_dev, &sum_pkt[0], 1);
-	uart_fifo_fill(uart_dev, &sum_pkt[1], 1);
+	uart_poll_out(dev, sum_pkt[0]);
+	uart_poll_out(dev, sum_pkt[1]);
 }
 
 static uint8_t getStructuredPacket(const struct device *uart_dev, struct packet *packet,
@@ -123,6 +123,7 @@ static int16_t fps_get_image(void)
 	uint8_t data[] = {FPS_GENIMAGE};
 
 	create_packet(&gen_packet, FPS_COMMANDPACKET, data, sizeof(data));
+	write_packet(gen_packet);
 
 	return recv_packet.data[0];
 }
@@ -132,6 +133,7 @@ static int16_t fps_image2Tz(uint8_t slot)
 	uint8_t data[] = {FPS_IMAGE2TZ, slot};
 
 	create_packet(&gen_packet, FPS_COMMANDPACKET, data, sizeof(data));
+	write_packet(gen_packet);
 
 	return recv_packet.data[0];
 }
@@ -141,6 +143,7 @@ static int16_t fps_create_model(void)
 	uint8_t data[] = {FPS_REGMODEL};
 
 	create_packet(&gen_packet, FPS_COMMANDPACKET, data, sizeof(data));
+	write_packet(gen_packet);
 
 	return recv_packet.data[0];
 }
@@ -150,6 +153,7 @@ static int16_t fps_store_model(uint16_t id, uint8_t slot)
 	uint8_t data[] = {FPS_STORE, slot, id >> 8, id & 0xFF};
 
 	create_packet(&gen_packet, FPS_COMMANDPACKET, data, sizeof(data));
+	write_packet(gen_packet);
 
 	return recv_packet.data[0];
 }
@@ -159,6 +163,7 @@ static int16_t fps_get_template_count(uint16_t *template_cnt)
 	uint8_t data[0] = {FPS_TEMPLATECOUNT};
 
 	create_packet(&gen_packet, FPS_COMMANDPACKET, data, sizeof(data));
+	write_packet(gen_packet);
 
 	*template_cnt = recv_packet.data[1];
 	*template_cnt <<= 8;
@@ -173,6 +178,7 @@ static struct sys_params getParameters(void)
 	uint8_t data[] = {FPS_READSYSPARAM};
 
 	create_packet(&gen_packet, FPS_COMMANDPACKET, data, sizeof(data));
+	write_packet(gen_packet);
 
 	get_param.return_data = recv_packet.data[0];
 	get_param.status_reg = ((uint16_t)recv_packet.data[1] << 8) | recv_packet.data[2];
@@ -349,15 +355,24 @@ static int grow_r502a_attr_get(const struct device *dev,
 	return 0;
 }
 
+static void grow_r502a_work_cb(struct k_work *work)
+{
+	struct grow_r502a_data *drv_data =
+		CONTAINER_OF(work, struct grow_r502a_data, work);
+
+	if (drv_data->touch_handler != NULL) {
+		uart_irq_tx_disable(dev);
+		uart_irq_rx_disable(dev);
+		uart_irq_callback_set(dev, grow_r502a_uart_isr);
+		uart_irq_rx_enable(dev);
+	}
+}
+
 static int grow_r502a_trigger_set(const struct device *dev,
 			 const struct sensor_trigger *trig,
 			 sensor_trigger_handler_t handler)
 {
 	struct grow_r502a_data *drv_data = dev->data;
-
-	if (trig->type != SENSOR_TRIG_TOUCH) {
-		return -ENOTSUP;
-	}
 
 	if (trig->type == SENSOR_TRIG_TOUCH) {
 		drv_data->touch_handler = handler;
@@ -370,18 +385,14 @@ static int grow_r502a_trigger_set(const struct device *dev,
 
 }
 
-static int grow_r502a_uart_callback(const struct device *dev, void *user_data)
+static int grow_r502a_uart_isr(const struct device *dev, void *user_data)
 {
 	ARG_UNUSED(user_data);
 	uint16_t timeout = 1000;
 
 	if (!uart_irq_update(dev)) {
-		printk("retval should always be 1\n");
+		LOG_ERR("retval should always be 1\n");
 		return -EIO;
-	}
-
-	if (uart_irq_tx_ready(dev)) {
-		write_packet(dev, gen_packet);
 	}
 
 	if (uart_irq_rx_ready(dev)) {
@@ -397,9 +408,7 @@ static int grow_r502a_uart_callback(const struct device *dev, void *user_data)
 
 static int grow_r502a_init_interrupt(const struct device *dev)
 {
-	uart_irq_callback_set(dev, grow_r502a_uart_callback);
-	uart_irq_tx_enable(dev);
-	uart_irq_rx_enable(dev);
+	drv_data->work.handler = grow_r502a_work_cb;
 	return 0;
 }
 

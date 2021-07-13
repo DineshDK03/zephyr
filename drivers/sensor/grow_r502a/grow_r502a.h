@@ -107,7 +107,7 @@ static struct packet gen_packet, recv_packet;
 
 struct grow_r502a_data {
 	const struct device *uart_dev;
-
+	struct k_work work;
 	struct sensor_trigger touch_trigger;
 	sensor_trigger_handler_t touch_handler;
 
